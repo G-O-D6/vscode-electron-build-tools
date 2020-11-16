@@ -211,6 +211,25 @@ function registerElectronBuildToolsCommands(
       }
     ),
     vscode.commands.registerCommand(
+      "electron-build-tools.revealInElectronSidebar",
+      (file: vscode.Uri) => {
+        if (
+          /.*\/electron\/(?:spec|spec-main)\/.*-spec\.(?:js|ts)$/.test(
+            file.path
+          )
+        ) {
+          // TODO - Find test by filename
+          console.log("Test file");
+        } else if (/.*\/electron\/patches\/.*\.patch$/.test(file.path)) {
+          const treeItem = patchesProvider.getTreeItemForFile(file);
+
+          if (treeItem) {
+            patchesView.reveal(treeItem, { select: false, expand: true });
+          }
+        }
+      }
+    ),
+    vscode.commands.registerCommand(
       "electron-build-tools.show.exe",
       async () => {
         const { stdout } = await exec(`${buildToolsExecutable} show exe`, {

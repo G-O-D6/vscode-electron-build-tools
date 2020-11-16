@@ -30,6 +30,7 @@ export class ElectronPatchesProvider
   private readonly patchesConfig: Promise<ElectronPatchesConfig>;
   private readonly rootDirectory: vscode.Uri;
   private readonly viewPullRequestTreeItem: ViewPullRequestPatchTreeItem;
+  private readonly _filePathToTreeItem = new Map<string, vscode.TreeItem>();
 
   constructor(electronRoot: vscode.Uri, patchesConfig: vscode.Uri) {
     this.rootDirectory = vscode.Uri.joinPath(electronRoot, "..", "..");
@@ -70,6 +71,14 @@ export class ElectronPatchesProvider
     }
   }
 
+  getTreeItemForFile(file: vscode.Uri): vscode.TreeItem | undefined {
+    const treeItem = this._filePathToTreeItem.get(file.fsPath);
+
+    return treeItem
+      ? treeItem
+      : new Patch("Foo", file, new vscode.TreeItem("Bar"));
+  }
+
   getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
     return element;
   }
@@ -86,6 +95,8 @@ export class ElectronPatchesProvider
     if (element instanceof PullRequestTreeItem) {
       return this.viewPullRequestTreeItem;
     } else if (element === this.viewPullRequestTreeItem) {
+      return null;
+    } else if (element instanceof Patch) {
       return null;
     } else {
       throw new Error("Not implemented");
@@ -119,7 +130,14 @@ export class ElectronPatchesProvider
           const label =
             (await getPatchSubjectLine(filename)) ||
             path.basename(filename.fsPath);
-          children.push(new Patch(truncateToLength(label, 50), filename));
+          const patchTreeItem = new Patch(
+            truncateToLength(label, 50),
+            filename,
+            element
+          );
+
+          this._filePathToTreeItem.set(filename.fsPath, patchTreeItem);
+          children.push(patchTreeItem);
         }
       } else if (element instanceof Patch) {
         children.push(new PatchOverview(element.uri));
@@ -183,7 +201,11 @@ export class PatchDirectory extends vscode.TreeItem {
 }
 
 export class Patch extends vscode.TreeItem {
-  constructor(label: string, public uri: vscode.Uri) {
+  constructor(
+    label: string,
+    public uri: vscode.Uri,
+    public parent: vscode.TreeItem
+  ) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.uri = uri; // BUG - resourceUri doesn't play nice with advanced hover
